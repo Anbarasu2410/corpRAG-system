@@ -4,37 +4,57 @@ import {
   Send, 
   BookOpen, 
   LogOut, 
-  ShieldCheck, 
   RefreshCw,
   X,
   User,
   Lock,
   Mail,
-  Table
+  Table,
+  KeyRound
 } from 'lucide-react';
 import { marked } from 'marked';
 
-// Dynamically determine Backend URL (uses deployed URL or fallback)
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 export default function App() {
   // Auth state
   const [token, setToken] = useState(localStorage.getItem('corpRAG_JWT'));
   const [currentUser, setCurrentUser] = useState(JSON.parse(localStorage.getItem('corpRAG_User') || 'null'));
-  const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
-  const [authForm, setAuthForm] = useState({ name: '', email: '', password: '' });
+  const [authMode, setAuthMode] = useState('login'); // 'login', 'signup', or 'forgot'
+  const [authForm, setAuthForm] = useState({ name: '', email: '', password: '', otp: '', newPassword: '' });
   const [authError, setAuthError] = useState('');
+  const [authSuccess, setAuthSuccess] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
 
   // Flowise Chatbot Cloud URL state
   const [flowiseChatbotUrl, setFlowiseChatbotUrl] = useState('http://localhost:3000/chatbot/79d8f8ed-b5ef-4dd9-b988-6f1309e9e042');
 
-  // Workspace Chat state
+  // Workspace Chat state (Private User Messages)
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('chat'); // 'chat' or 'embed'
+  const [activeTab, setActiveTab] = useState('chat');
   const [selectedSources, setSelectedSources] = useState(null);
+
+  // Clear chat when user logs in/out to ensure strict 100% privacy
+  useEffect(() => {
+    if (currentUser) {
+      const savedPrivateChat = localStorage.getItem(`corpRAG_Private_Chat_${currentUser.email}`);
+      if (savedPrivateChat) {
+        setMessages(JSON.parse(savedPrivateChat));
+      } else {
+        setMessages([]);
+      }
+    }
+  }, [currentUser]);
+
+  // Save private chat to localStorage on message update
+  useEffect(() => {
+    if (currentUser && messages.length > 0) {
+      localStorage.setItem(`corpRAG_Private_Chat_${currentUser.email}`, JSON.stringify(messages));
+    }
+  }, [messages, currentUser]);
 
   // Fetch backend config on load
   useEffect(() => {
@@ -52,7 +72,58 @@ export default function App() {
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setAuthError('');
+    setAuthSuccess('');
     setAuthLoading(true);
+
+    if (authMode === 'forgot') {
+      if (!otpSent) {
+        // Request OTP
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: authForm.email })
+          });
+          const data = await res.json();
+          setAuthLoading(false);
+          if (!res.ok) {
+            setAuthError(data.error || 'Failed to send OTP.');
+          } else {
+            setOtpSent(true);
+            setAuthSuccess(`OTP sent to ${authForm.email}! (Test Code: ${data.otp})`);
+          }
+        } catch (err) {
+          setAuthLoading(false);
+          setAuthError('Connection error to backend.');
+        }
+      } else {
+        // Verify OTP & Reset Password
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: authForm.email,
+              otp: authForm.otp,
+              newPassword: authForm.newPassword
+            })
+          });
+          const data = await res.json();
+          setAuthLoading(false);
+          if (!res.ok) {
+            setAuthError(data.error || 'Invalid OTP.');
+          } else {
+            setAuthSuccess('Password reset successfully! Log in with your new password.');
+            setAuthMode('login');
+            setOtpSent(false);
+          }
+        } catch (err) {
+          setAuthLoading(false);
+          setAuthError('Connection error to backend.');
+        }
+      }
+      return;
+    }
 
     const endpoint = authMode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
 
@@ -71,7 +142,6 @@ export default function App() {
         return;
       }
 
-      // Save Auth Token & User
       setToken(data.token);
       setCurrentUser(data.user);
       localStorage.setItem('corpRAG_JWT', data.token);
@@ -88,9 +158,10 @@ export default function App() {
     localStorage.removeItem('corpRAG_User');
     setToken(null);
     setCurrentUser(null);
+    setMessages([]);
   };
 
-  // Handle Chat Query
+  // Handle Private Chat Query
   const handleSend = async (e) => {
     e.preventDefault();
     if (!input.trim() || chatLoading) return;
@@ -139,13 +210,13 @@ export default function App() {
               <Bot className="w-7 h-7" />
             </div>
             <h1 className="text-xl font-bold text-slate-100">corpRAG Intelligence</h1>
-            <p className="text-xs text-slate-400 mt-1">Enterprise RAG Knowledge System</p>
+            <p className="text-xs text-slate-400 mt-1">Private Encrypted RAG Workspace</p>
           </div>
 
           {/* Mode Switcher */}
           <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 mb-6">
             <button
-              onClick={() => { setAuthMode('login'); setAuthError(''); }}
+              onClick={() => { setAuthMode('login'); setAuthError(''); setAuthSuccess(''); setOtpSent(false); }}
               className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
                 authMode === 'login' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
               }`}
@@ -153,12 +224,20 @@ export default function App() {
               Log In
             </button>
             <button
-              onClick={() => { setAuthMode('signup'); setAuthError(''); }}
+              onClick={() => { setAuthMode('signup'); setAuthError(''); setAuthSuccess(''); setOtpSent(false); }}
               className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
                 authMode === 'signup' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               Sign Up
+            </button>
+            <button
+              onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthSuccess(''); setOtpSent(false); }}
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+                authMode === 'forgot' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Forgot Password
             </button>
           </div>
 
@@ -195,24 +274,67 @@ export default function App() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Password</label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={authForm.password}
-                  onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-indigo-600 transition-all"
-                />
+            {authMode !== 'forgot' && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Password</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={authForm.password}
+                    onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-indigo-600 transition-all"
+                  />
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* OTP Fields for Forgot Password */}
+            {authMode === 'forgot' && otpSent && (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">6-Digit OTP Code</label>
+                  <div className="relative">
+                    <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="123456"
+                      value={authForm.otp}
+                      onChange={(e) => setAuthForm({ ...authForm, otp: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-indigo-600 transition-all font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">New Password</label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                    <input
+                      type="password"
+                      required
+                      placeholder="••••••••"
+                      value={authForm.newPassword}
+                      onChange={(e) => setAuthForm({ ...authForm, newPassword: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-indigo-600 transition-all"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             {authError && (
               <div className="p-3 rounded-xl bg-red-950/60 border border-red-800/60 text-red-300 text-xs">
                 {authError}
+              </div>
+            )}
+
+            {authSuccess && (
+              <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-xs">
+                {authSuccess}
               </div>
             )}
 
@@ -221,7 +343,13 @@ export default function App() {
               disabled={authLoading}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold text-xs transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"
             >
-              {authLoading ? 'Connecting...' : authMode === 'signup' ? 'Create Account' : 'Log In'}
+              {authLoading 
+                ? 'Processing...' 
+                : authMode === 'signup' 
+                  ? 'Create Account' 
+                  : authMode === 'forgot' 
+                    ? (otpSent ? 'Reset Password with OTP' : 'Send 6-Digit OTP') 
+                    : 'Log In'}
             </button>
           </form>
         </div>
@@ -230,7 +358,7 @@ export default function App() {
   }
 
   // --------------------------------------------------------------------------
-  // MAIN WORKSPACE INTERFACE
+  // MAIN WORKSPACE INTERFACE (STRICT PRIVACY)
   // --------------------------------------------------------------------------
   return (
     <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
@@ -244,7 +372,7 @@ export default function App() {
           <div>
             <h1 className="font-bold text-base text-slate-100">corpRAG</h1>
             <span className="text-[10px] font-semibold text-indigo-400 bg-indigo-950 border border-indigo-800 px-2 py-0.5 rounded-full">
-              Enterprise RAG
+              Private RAG
             </span>
           </div>
         </div>
@@ -273,7 +401,7 @@ export default function App() {
               activeTab === 'chat' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
             }`}
           >
-            <Bot className="w-4 h-4" /> Custom RAG Workspace
+            <Bot className="w-4 h-4" /> Private RAG Workspace
           </button>
           <button
             onClick={() => setActiveTab('embed')}
@@ -302,9 +430,9 @@ export default function App() {
                   <div className="w-16 h-16 rounded-2xl bg-indigo-950/60 border border-indigo-800 flex items-center justify-center text-indigo-400 mb-4">
                     <BookOpen className="w-8 h-8" />
                   </div>
-                  <h3 className="text-base font-bold text-slate-100 mb-1">Welcome to corpRAG Workspace</h3>
+                  <h3 className="text-base font-bold text-slate-100 mb-1">Private RAG Workspace</h3>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Query your loaded document vector store. Every answer is grounded in RAG context.
+                    Your queries and session memory are strictly isolated to your account ({currentUser.email}).
                   </p>
                 </div>
               ) : (
