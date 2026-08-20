@@ -1,0 +1,27 @@
+# Logs & Temporary files
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Exclude local Flowise codebase (Deploy Flowise directly from official Railway/Render template instead)
+Flowise/
+
+# Dependency directories
+node_modules/
+**/node_modules/
+
+# SQLite / Database artifacts
+*.sqlite
+*.sqlite3
+
+# Environment variables (contains private JWT keys & URLs)
+.env
+*.env
+server/.env
+
+# Build outputs
+dist/
+build/
+.turbo/

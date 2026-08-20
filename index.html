@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>corpRAG - Enterprise AI Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <!-- Auth Overlay (Modal when not logged in) -->
+    <div class="auth-overlay" id="auth-overlay">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="logo-icon"><i class="fa-solid fa-brain"></i></div>
+                <h2>corpRAG Enterprise</h2>
+                <p>Sign in to access your document intelligence workflow</p>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tab-login">Login</button>
+                <button class="auth-tab" id="tab-signup">Sign Up</button>
+            </div>
+
+            <!-- Form -->
+            <form id="auth-form">
+                <div class="input-group" id="name-group" style="display: none;">
+                    <label>Full Name</label>
+                    <input type="text" id="auth-name" placeholder="John Doe">
+                </div>
+                <div class="input-group">
+                    <label>Email Address</label>
+                    <input type="email" id="auth-email" required placeholder="user@company.com">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="auth-password" required placeholder="••••••••">
+                </div>
+                <div class="auth-error" id="auth-error"></div>
+                <button type="submit" class="btn-auth-submit" id="auth-submit-btn">Login to corpRAG</button>
+            </form>
+            <div class="auth-footer">
+                <small><i class="fa-solid fa-shield-halved"></i> Secured with JWT Token & bcrypt Hash</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Workspace Container -->
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon"><i class="fa-solid fa-brain"></i></div>
+                    <div class="logo-text">
+                        <h2>corpRAG</h2>
+                        <span class="badge">Enterprise</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="user-badge-card" id="user-info-card">
+                <div class="user-avatar" id="user-avatar-initials">U</div>
+                <div class="user-details">
+                    <span class="user-name" id="user-display-name">User Name</span>
+                    <span class="user-email" id="user-display-email">user@corp.com</span>
+                </div>
+                <button class="btn-logout" id="logout-btn" title="Sign Out"><i class="fa-solid fa-right-from-bracket"></i></button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Workspace Views</h3>
+                <button class="btn-view active" id="view-chat-btn"><i class="fa-solid fa-comments"></i> RAG Workspace</button>
+                <button class="btn-view" id="view-embed-btn"><i class="fa-solid fa-robot"></i> Flowise Widget</button>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="status-dot online"></span>
+                    <span>Google Sheets Backend Linked</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="main-chat">
+            <header class="chat-header">
+                <div class="header-title">
+                    <h1>corpRAG Intelligence Assistant</h1>
+                    <p>Flowise Endpoint: <code id="flowise-endpoint-label">http://localhost:3000/chatbot/79d8f8ed-b5ef-4dd9-b988-6f1309e9e042</code></p>
+                </div>
+            </header>
+
+            <!-- Mode 1: Custom RAG Workspace -->
+            <div class="chat-view-container" id="chat-workspace-view">
+                <div class="messages-container" id="messages-container">
+                    <div class="welcome-card">
+                        <div class="welcome-icon"><i class="fa-solid fa-network-wired"></i></div>
+                        <h2>Welcome to corpRAG</h2>
+                        <p>Ask questions grounded in your document vector store. Every query is logged into your Google Sheet.</p>
+                    </div>
+                </div>
+
+                <footer class="input-container">
+                    <form id="chat-form">
+                        <div class="input-wrapper">
+                            <textarea id="user-input" placeholder="Ask a question about your documents..." rows="1" required></textarea>
+                            <button type="submit" id="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                        </div>
+                    </form>
+                </footer>
+            </div>
+
+            <!-- Mode 2: Embedded Flowise Chatbot Widget -->
+            <div class="embed-view-container" id="embed-workspace-view" style="display: none; height: 100%;">
+                <iframe id="flowise-iframe" src="http://localhost:3000/chatbot/79d8f8ed-b5ef-4dd9-b988-6f1309e9e042" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
