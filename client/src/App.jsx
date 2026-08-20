@@ -10,7 +10,8 @@ import {
   Lock,
   Mail,
   Table,
-  KeyRound
+  KeyRound,
+  Trash2
 } from 'lucide-react';
 import { marked } from 'marked';
 
@@ -51,10 +52,18 @@ export default function App() {
 
   // Save private chat to localStorage on message update
   useEffect(() => {
-    if (currentUser && messages.length > 0) {
+    if (currentUser) {
       localStorage.setItem(`corpRAG_Private_Chat_${currentUser.email}`, JSON.stringify(messages));
     }
   }, [messages, currentUser]);
+
+  // Clear Chat History function
+  const handleClearChat = () => {
+    setMessages([]);
+    if (currentUser) {
+      localStorage.removeItem(`corpRAG_Private_Chat_${currentUser.email}`);
+    }
+  };
 
   // Fetch backend config on load
   useEffect(() => {
@@ -433,6 +442,14 @@ export default function App() {
           <div>
             <h2 className="text-sm font-semibold text-slate-100">corpRAG Document Intelligence</h2>
           </div>
+          {activeTab === 'chat' && (
+            <button
+              onClick={handleClearChat}
+              className="py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-red-950/60 border border-slate-700 hover:border-red-800/60 text-slate-300 hover:text-red-300 text-xs font-semibold flex items-center gap-1.5 transition-all"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Clear Chat
+            </button>
+          )}
         </header>
 
         {activeTab === 'chat' ? (
