@@ -14,6 +14,9 @@ import {
 } from 'lucide-react';
 import { marked } from 'marked';
 
+// Dynamically determine Backend URL (uses deployed URL or fallback)
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
 export default function App() {
   // Auth state
   const [token, setToken] = useState(localStorage.getItem('corpRAG_JWT'));
@@ -23,12 +26,27 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
+  // Flowise Chatbot Cloud URL state
+  const [flowiseChatbotUrl, setFlowiseChatbotUrl] = useState('http://localhost:3000/chatbot/79d8f8ed-b5ef-4dd9-b988-6f1309e9e042');
+
   // Workspace Chat state
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('chat'); // 'chat' or 'embed'
   const [selectedSources, setSelectedSources] = useState(null);
+
+  // Fetch backend config on load
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/config`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.flowiseChatbotUrl) {
+          setFlowiseChatbotUrl(data.flowiseChatbotUrl);
+        }
+      })
+      .catch(err => console.error("Config fetch error:", err));
+  }, []);
 
   // Handle Auth Form Submission
   const handleAuthSubmit = async (e) => {
@@ -39,7 +57,7 @@ export default function App() {
     const endpoint = authMode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
 
     try {
-      const res = await fetch(`http://localhost:5000${endpoint}`, {
+      const res = await fetch(`${BACKEND_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(authForm)
@@ -61,7 +79,7 @@ export default function App() {
 
     } catch (err) {
       setAuthLoading(false);
-      setAuthError('Cannot connect to Express backend. Ensure "node index.js" is running in server.');
+      setAuthError('Cannot connect to Backend Server. Please check configuration.');
     }
   };
 
@@ -83,7 +101,7 @@ export default function App() {
     setChatLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/chat/query', {
+      const res = await fetch(`${BACKEND_URL}/api/chat/query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -121,7 +139,7 @@ export default function App() {
               <Bot className="w-7 h-7" />
             </div>
             <h1 className="text-xl font-bold text-slate-100">corpRAG Intelligence</h1>
-            <p className="text-xs text-slate-400 mt-1">JWT Authenticated + Google Sheets Database Engine</p>
+            <p className="text-xs text-slate-400 mt-1">Enterprise RAG Knowledge System</p>
           </div>
 
           {/* Mode Switcher */}
@@ -153,7 +171,7 @@ export default function App() {
                   <input
                     type="text"
                     required
-                    placeholder="Anbarasu"
+                    placeholder="John Doe"
                     value={authForm.name}
                     onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-indigo-600 transition-all"
@@ -203,13 +221,9 @@ export default function App() {
               disabled={authLoading}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold text-xs transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"
             >
-              {authLoading ? 'Connecting...' : authMode === 'signup' ? 'Create corpRAG Account' : 'Log In to corpRAG'}
+              {authLoading ? 'Connecting...' : authMode === 'signup' ? 'Create Account' : 'Log In'}
             </button>
           </form>
-
-          <div className="mt-6 text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" /> Passwords hashed with bcrypt & saved to Google Sheet
-          </div>
         </div>
       </div>
     );
@@ -270,16 +284,6 @@ export default function App() {
             <Table className="w-4 h-4" /> Flowise Widget View
           </button>
         </div>
-
-        {/* Google Sheet Sync Notice */}
-        <div className="mt-auto bg-emerald-950/40 border border-emerald-800/50 p-3 rounded-xl text-xs text-emerald-300">
-          <div className="font-semibold flex items-center gap-1.5 mb-1">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" /> Google Sheet Database Live
-          </div>
-          <p className="text-[11px] text-emerald-400/80 leading-relaxed">
-            All registered users and query logs are stored directly inside your Google Sheet tabs (`Users`, `QueryLogs`).
-          </p>
-        </div>
       </aside>
 
       {/* Main Workspace */}
@@ -287,7 +291,6 @@ export default function App() {
         <header className="h-16 border-b border-slate-800 px-6 flex items-center justify-between bg-slate-900/50">
           <div>
             <h2 className="text-sm font-semibold text-slate-100">corpRAG Document Intelligence</h2>
-            <p className="text-[11px] text-slate-400">Flowise Endpoint: http://localhost:3000/chatbot/79d8f8ed-b5ef-4dd9-b988-6f1309e9e042</p>
           </div>
         </header>
 
@@ -301,7 +304,7 @@ export default function App() {
                   </div>
                   <h3 className="text-base font-bold text-slate-100 mb-1">Welcome to corpRAG Workspace</h3>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Query your loaded document vector store. Every answer is grounded in RAG context and automatically logged into your Google Sheet.
+                    Query your loaded document vector store. Every answer is grounded in RAG context.
                   </p>
                 </div>
               ) : (
@@ -338,7 +341,7 @@ export default function App() {
                     <Bot className="w-4 h-4" />
                   </div>
                   <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-xs text-slate-400 flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4 animate-spin text-indigo-500" /> Querying Flowise RAG engine & logging query to Google Sheet...
+                    <RefreshCw className="w-4 h-4 animate-spin text-indigo-500" /> Querying Flowise RAG engine...
                   </div>
                 </div>
               )}
@@ -362,7 +365,7 @@ export default function App() {
         ) : (
           <div className="flex-1 h-full">
             <iframe 
-              src="http://localhost:3000/chatbot/79d8f8ed-b5ef-4dd9-b988-6f1309e9e042" 
+              src={flowiseChatbotUrl}
               className="w-full h-full border-none"
               title="Flowise Chatbot Widget"
             />
