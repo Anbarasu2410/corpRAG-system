@@ -190,19 +190,20 @@ app.post('/api/chat/query', authenticateToken, async (req, res) => {
   if (!question) return res.status(400).json({ error: 'Question parameter required.' });
 
   try {
-    // Flowise call with overrideConfig for User Session Isolation
+    // Flowise prediction API call
     const fetchRes = await fetch(FLOWISE_PREDICTION_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        question,
-        overrideConfig: {
-          sessionId: `user_session_${userEmail}` // Isolates conversation memory per user!
-        }
-      })
+      body: JSON.stringify({ question })
     });
 
     const data = await fetchRes.json();
+    
+    // Check if Flowise API returned internal 500 error structure
+    if (data.statusCode && data.statusCode >= 400) {
+      throw new Error(data.message || `Flowise Engine Error (${data.statusCode})`);
+    }
+
     const responseText = typeof data === 'string' ? data : (data.text || JSON.stringify(data));
 
     // Log Query into Google Sheet with User Ownership
