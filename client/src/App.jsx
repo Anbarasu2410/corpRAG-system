@@ -77,7 +77,6 @@ export default function App() {
 
     if (authMode === 'forgot') {
       if (!otpSent) {
-        // Request OTP
         try {
           const res = await fetch(`${BACKEND_URL}/api/auth/forgot-password`, {
             method: 'POST',
@@ -87,17 +86,16 @@ export default function App() {
           const data = await res.json();
           setAuthLoading(false);
           if (!res.ok) {
-            setAuthError(data.error || 'Failed to send OTP.');
+            setAuthError(data.error || 'Failed to generate OTP.');
           } else {
             setOtpSent(true);
-            setAuthSuccess(`OTP sent to ${authForm.email}! (Test Code: ${data.otp})`);
+            setAuthSuccess(`OTP sent! Code: ${data.otp}`);
           }
         } catch (err) {
           setAuthLoading(false);
-          setAuthError('Connection error to backend.');
+          setAuthError('Backend not connected. Check VITE_BACKEND_URL in Netlify settings.');
         }
       } else {
-        // Verify OTP & Reset Password
         try {
           const res = await fetch(`${BACKEND_URL}/api/auth/reset-password`, {
             method: 'POST',
@@ -113,13 +111,13 @@ export default function App() {
           if (!res.ok) {
             setAuthError(data.error || 'Invalid OTP.');
           } else {
-            setAuthSuccess('Password reset successfully! Log in with your new password.');
+            setAuthSuccess('Password reset successfully! Log in below.');
             setAuthMode('login');
             setOtpSent(false);
           }
         } catch (err) {
           setAuthLoading(false);
-          setAuthError('Connection error to backend.');
+          setAuthError('Backend not connected. Check VITE_BACKEND_URL in Netlify settings.');
         }
       }
       return;
@@ -149,7 +147,7 @@ export default function App() {
 
     } catch (err) {
       setAuthLoading(false);
-      setAuthError('Cannot connect to Backend Server. Please check configuration.');
+      setAuthError('Backend not connected. Set VITE_BACKEND_URL in Netlify settings.');
     }
   };
 
@@ -231,14 +229,6 @@ export default function App() {
             >
               Sign Up
             </button>
-            <button
-              onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthSuccess(''); setOtpSent(false); }}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
-                authMode === 'forgot' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Forgot Password
-            </button>
           </div>
 
           <form onSubmit={handleAuthSubmit} className="space-y-4">
@@ -276,7 +266,18 @@ export default function App() {
 
             {authMode !== 'forgot' && (
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Password</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-xs font-semibold text-slate-400">Password</label>
+                  {authMode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthSuccess(''); setOtpSent(false); }}
+                      className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-all"
+                    >
+                      Forgot Password?
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                   <input
@@ -351,6 +352,18 @@ export default function App() {
                     ? (otpSent ? 'Reset Password with OTP' : 'Send 6-Digit OTP') 
                     : 'Log In'}
             </button>
+
+            {authMode === 'forgot' && (
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('login'); setAuthError(''); setAuthSuccess(''); setOtpSent(false); }}
+                  className="text-xs text-slate-400 hover:text-slate-200"
+                >
+                  ← Back to Log In
+                </button>
+              </div>
+            )}
           </form>
         </div>
       </div>
